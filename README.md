@@ -4,6 +4,8 @@ See a [short blog post](http://sergeykarayev.com/foveal-explorer/) for more info
 
 **NOTE**: this code was used in an abandoned research project, and is released only to demonstrate the Foveal Explorer JavaScript applet, and host the gathered AMT fixation data, without any support.
 
+![](foveal_explorer.jpg)
+
 ---
 
 ### Viewing the task page locally.
