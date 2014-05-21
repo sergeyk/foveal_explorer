@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Foveal Explorer</title>
+
+    <!-- Style: Blueprint, and change cursor to crosshair in the canvas. -->
+    <link rel="stylesheet" href="screen.css" type="text/css" media="screen, projection">
+    <style type="text/css">
+      #explorer {
+        cursor:crosshair;
+      }
+    </style>
+
+    <!-- Processing.js -->
+    <script src="processing.min.js"></script>
+
+    <!-- Query string parsing, binding Processing, and submission. -->
+    <script type="text/javascript">
+    /*<![CDATA[*/
+      function getQueryVariable(name, default_value) {
+        var regexS = "[\\?&]"+name+"=([^&#]*)";
+        var regex = new RegExp( regexS );
+        var tmpURL = window.location.href;
+        var results = regex.exec( tmpURL );
+        if( results == null )
+          return default_value;
+        else
+          return results[1];
+      }
+
+      function HIT_accepted() {
+        return !(getQueryVariable('assignmentId','') == "ASSIGNMENT_ID_NOT_AVAILABLE");
+      }
+
+      // img can be a URL or filesystem path
+      var img = getQueryVariable("img","i05june05_static_street_boston_p1010764.jpeg");
+
+      // mode is one of [free, click]
+      var mode = getQueryVariable("mode","click");
+
+      // task is one of [describe, count_people]
+      var task = getQueryVariable("task","random");
+      if (task=='random') {
+        var r=Math.floor(Math.random()*3);
+        if (r==0) task = 'describe';
+        if (r==1) task = 'text';
+        if (r==2) task = 'count_people';
+      }
+
+      ////////////////
+      // Binding Processing to get data from sketch
+      var bound = false;
+      function bindJavascript() {
+        var pjs = Processing.getInstanceById('ex');
+        if(pjs!=null) {
+          pjs.bindJavascript(this);
+          bound = true;
+        }
+        if(!bound) setTimeout(bindJavascript, 250);
+      }
+      bindJavascript();
+
+      var history = [];
+      function recordData(x, y, time, frameCount) {
+        var dict = {'x':x,'y':y,'time':time,'frameCount':frameCount};
+        history.push(dict);
+      }
+
+      function finalize() {
+        // Make sure that there is text in the content box, and set the history.
+        if (document.getElementById('user_content').value.length < 1) {
+          alert("You must provide input to submit this HIT!");
+          return false;
+        }
+        document.getElementById('history').value = JSON.stringify(history);
+        var pjs = Processing.getInstanceById('ex');
+        if(pjs!=null) {
+            document.getElementById('img_width').value = pjs.width;
+            document.getElementById('img_height').value = pjs.height;
+        }
+      }
+
+      function initialize() {
+        // Set instructions
+        document.getElementById('instructions-free').style.display = 'none';
+        document.getElementById('instructions-click').style.display = 'none';
+        document.getElementById('instructions-describe').style.display = 'none';
+        document.getElementById('instructions-text').style.display = 'none';
+        document.getElementById('instructions-count_people').style.display = 'none';
+        document.getElementById('textfield-describe').style.display = 'none';
+        document.getElementById('textfield-text').style.display = 'none';
+        document.getElementById('textfield-count_people').style.display = 'none';
+
+        // Set the hidden values
+        document.getElementById('assignmentId').value = getQueryVariable('assignmentId','');
+        document.getElementById('mode').value = mode;
+        document.getElementById('task').value = task;
+        document.getElementById('img').value = img;
+
+        // Check if the worker is PREVIEWING the HIT or if they've ACCEPTED the HIT
+        if (getQueryVariable('assignmentId','') == "ASSIGNMENT_ID_NOT_AVAILABLE")
+        {
+          // If we're previewing, disable the button and give it a helpful message
+          document.getElementById('submitButton').disabled = true;
+          document.getElementById('submitButton').value = "You must ACCEPT the HIT before you can submit the results.";
+        } else {
+          var form = document.getElementById('mturk_form');
+          if (document.referrer && ( document.referrer.indexOf('workersandbox') != -1) ) {
+            form.action = "http://workersandbox.mturk.com/mturk/externalSubmit";
+          }
+        }
+        // Mode-dependent part
+        if (mode=='free') document.getElementById('instructions-free').style.display = 'block';
+        if (mode=='click') document.getElementById('instructions-click').style.display = 'block';
+
+        // Task-dependent part
+        if (task=='describe') {
+          document.getElementById('instructions-describe').style.display = 'block';
+          document.getElementById('textfield-describe').style.display = 'inline';
+        }
+        if (task=='count_people') {
+          document.getElementById('instructions-count_people').style.display = 'block';
+          document.getElementById('textfield-count_people').style.display = 'inline';
+        }
+        if (task=='text') {
+          document.getElementById('instructions-text').style.display = 'block';
+          document.getElementById('textfield-text').style.display = 'inline';
+        }
+      }
+    /*]]>*/
+    </script>
+  </head>
+
+  <body>
+  <div class="container">
+  <div class="span-20 center">
+    <div id="instructions-describe">
+      <h1>Describe Scene</h1>
+      <p style="font-size:1.2em">
+      <strong>Describe the image in a sentence or two</strong><br />
+      in the text box below. Include details!
+      </p>
+    </div>
+
+    <div id="instructions-text">
+      <h1>Find Text</h1>
+      <p style="font-size:1.2em">
+      <strong>Find all the text in the image</strong><br />
+      and write it down in the text box below.
+      </p>
+    </div>
+
+    <div id="instructions-count_people">
+      <h1>Count People</h1>
+      <p style="font-size:1.2em">
+      <strong>Find all the people in the image</strong>,<br />
+      and report their number in the text box below.
+      </p>
+    </div>
+
+    <div id="explorer">
+      <canvas id="ex" data-processing-sources="ex.pde"></canvas>
+    </div>
+
+    <p id="instructions-click">
+    Explore the scene by clicking at different places in the image.<br />
+    </p>
+
+    <p id="instructions-free">
+    Explore the scene by moving your mouse cursor around the image.
+    </p>
+
+    <p>When you are ready to begin, accept the HIT and click the circle in the middle of the gray area.</p>
+
+    <form id="mturk_form" method="post" action="http://www.mturk.com/mturk/externalSubmit" onSubmit="return finalize()">
+      <input type="hidden" id="assignmentId" name="assignmentId" value="" />
+      <input type="hidden" id="history" name="history" value="" />
+      <input type="hidden" id="mode" name="mode" value="" />
+      <input type="hidden" id="task" name="task" value="" />
+      <input type="hidden" id="img" name="img" value="" />
+      <input type="hidden" id="img_width" name="img_width" value="" />
+      <input type="hidden" id="img_height" name="img_height" value="" />
+
+      <span id="textfield-describe">Your description of the scene, with some details:</span>
+      <span id="textfield-text">Write down all the text in the image (write 'none' if no text):</span>
+      <span id="textfield-count_people">Enter the number of people in the image (0 if none):</span>
+      <br />
+      <input type="text" id="user_content" name="user_content" style="width: 95%" />
+      <input id="submitButton" type="submit" name="Submit" value="Submit" />
+
+      <hr />
+      <p>
+        If you have any questions about this HIT, encounter a problem, <br />
+        or have suggestions on how we could improve it, please let us know:
+        <input type="text" autocomplete="off" name="comment" id="comment" value="Put your OPTIONAL comments here" style="width: 70%;" />
+      </p>
+
+      <p style="font-size: 75%;">
+        By making judgments about these tasks, you are participating in a study being performed by <b>UC Berkeley</b>.
+        If you have questions about this research, please contact <a href="http://sergeykarayev.com">Sergey Karayev</a>.
+        Your participation in this research is voluntary.
+        You may decline to answer these questions.
+        You may decline further participation, at any time, without adverse consequences.
+        Your anonymity is assured; the researchers who have requested your participation will not receive any personal information about you.
+        UC Berkeley owns all copyright of the result for your participation.
+      </p>
+    </form>
+  </div>
+  </div>
+  <script type='text/javascript'>
+  /*<![CDATA[*/
+    initialize();
+  /*]]>*/
+  </script>
+  </body>
+</html>
